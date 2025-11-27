@@ -1,4 +1,14 @@
 from debian:buster-slim as builder
+
+# point to the archive mirror and ignore expired release metadata
+run set -eux; \
+  sed -ri 's|deb.debian.org/debian|archive.debian.org/debian|g; \
+           s|security.debian.org/debian-security|archive.debian.org/debian-security|g' /etc/apt/sources.list; \
+  printf 'Acquire::Check-Valid-Until "false";\n' > /etc/apt/apt.conf.d/99no-check-valid; \
+  apt-get -o Acquire::Check-Valid-Until=false update; \
+  apt-get install -y --no-install-recommends debootstrap ca-certificates wget; \
+  rm -rf /var/lib/apt/lists/*
+
 run apt-get -qq update && apt-get -q install --assume-yes debootstrap
 
 run debootstrap --arch i386 --variant=minbase --include=wget,make,libc6-dev,gcc-3.3 lenny /work http://snapshot.debian.org/archive/debian/20070730T000000Z/
@@ -7,12 +17,5 @@ run chroot /work apt-get -q clean
 
 from scratch
 copy --from=builder /work /
-
-# run wget --output-document=/var/lib/apt/lists/Packages.gz http://snapshot.debian.org/archive/debian/20070730T000000Z/dists/lenny/main/binary-i386/Packages.gz && \
-#     gunzip /var/lib/apt/lists/Packages.gz && \
-#     mv /var/lib/apt/lists/Packages /var/lib/apt/lists/snapshot.debian.org_archive_debian_20070730T000000Z_dists_lenny_main_binary-i386_Packages && \
-#     ls -al /var/lib/apt/lists >&2
-
-# run apt-get install -y --force-yes gcc-3.3
 
 cmd ["bash"]
